@@ -8,7 +8,7 @@ import (
 
 func Initialize(app base.App) *errors.Err {
 	if app.Name() == "" {
-		return errors.NewErr(100,"Missing app name")
+		return errors.MissingAppName
 	}
 
 	return nil

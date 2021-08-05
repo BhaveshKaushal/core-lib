@@ -1,31 +1,38 @@
 package conf
 
-import(
-  "testing"
-  "github.com/BhaveshKaushal/base-lib/pkg/mocks"
-  "github.com/stretchr/testify/assert" 
+import (
+	"testing"
+
+	"github.com/BhaveshKaushal/base-lib/pkg/base"
+	errors "github.com/BhaveshKaushal/base-lib/pkg/errors"
+	"github.com/BhaveshKaushal/base-lib/pkg/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-		mockApp = &mocks.MockApp{}
-)
 func TestInitialize(t *testing.T) {
-	
+
 	tests := []struct {
 		name           string
-		expectedOutput interface{}
+		expectedOutput *errors.Err
+		app            base.App
 	}{
 		{
-			name: "Success Initilaize",
-			expectedOutput: (*error)(nil),
+			name:           "Success Initialize",
+			expectedOutput: (*errors.Err)(nil),
+			app:            mocks.NewMock("testApp"),
+		},
+		{
+			name:           "Missing app name",
+			expectedOutput: errors.MissingAppName,
+			app:            mocks.NewMock(""),
 		},
 	}
 
 	for _, test := range tests {
 
 		t.Run(test.name, func(t *testing.T) {
-			err := Initialize(mockApp)
-			assert.Equal(t,test.expectedOutput, err)
+			err := Initialize(test.app)
+			assert.Equal(t, test.expectedOutput, err)
 		})
 	}
 }

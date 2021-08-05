@@ -1,7 +1,17 @@
 package errors
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
+type Error interface {
+	error
+	Code() int
+	Cause() error
+	Message() string
+	Er() error
+	Wrap(string) error
+}
 type Err struct {
 	code    int
 	message string
@@ -9,9 +19,14 @@ type Err struct {
 }
 
 //TODO: Need to integrate logger
-func NewErr(code int, msg string) *Err {
-	return &Err{code: code, message: msg, er: errors.New(msg)}
+func NewErr(code int, msg string, err error) *Err {
+	return &Err{code: code, message: msg, er: err}
 }
+
+func NewErrDefault(code int, msg string) *Err {
+	return NewErr(code,msg,errors.New(msg))
+}
+
 
 func (err *Err) Code() int {
 	return err.code
@@ -29,20 +44,6 @@ func (err *Err) Cause() error {
 	return errors.Cause(err.er)
 }
 
-func (err *Err) WithMessage(msg string) error {
-	return errors.WithMessage(err.Wrap(""), msg)
-}
-
-func (err *Err) WithMessagef(format string, args ...interface{}) error {
-	return errors.WithMessagef(err.Wrap(""), format, args...)
-}
-
 func (er *Err) Wrap(msg string) error {
 	return errors.Wrap(er.er, msg)
 }
-
-func (er *Err) Wrapf(format string, args ...interface{}) error {
-	return errors.Wrapf(er.er, format, args...)
-}
-
-
