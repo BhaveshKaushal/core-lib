@@ -30,7 +30,7 @@ func TestNewErr(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			er := NewErr(test.code, test.msg, errors.New(test.msg))
+			er := NewErrDefault(test.code, test.msg,"")
 			assert.Equal(t, test.expectedOutput.Code(), er.Code())
 			assert.Equal(t, test.expectedOutput.Message(), er.Message())
 			assert.Equal(t, test.expectedOutput.Er().Error(), er.Er().Error())
@@ -55,7 +55,7 @@ func TestCause(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			er := NewErr(test.code, test.msg, errors.New(test.msg))
+			er := NewErrDefault(test.code, test.msg,"")
 			assert.Equal(t, test.expectedOutput.Cause().Error(), er.Cause().Error())
 			assert.Equal(t, test.expectedOutput.Message(), er.Message())
 			assert.Equal(t, test.expectedOutput.Er().Error(), er.Er().Error())
@@ -80,7 +80,7 @@ func TestWrap(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			er := NewErr(test.code, test.msg, errors.New(test.msg))
+			er := NewErr(test.code,  errors.New(test.msg), test.msg,"error")
 			assert.Equal(t, test.expectedOutput.Wrap(msg).Error(), er.Wrap(msg).Error())
 			assert.Equal(t, test.expectedOutput.Message(), er.Message())
 			assert.Equal(t, test.expectedOutput.Wrap(msg).Error(), er.Wrap(msg).Error())

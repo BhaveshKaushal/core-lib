@@ -2,7 +2,7 @@ package conf
 
 import (
 	"github.com/BhaveshKaushal/base-lib/pkg/base"
-	errors"github.com/BhaveshKaushal/base-lib/pkg/errors"
+	errors "github.com/BhaveshKaushal/base-lib/pkg/errors"
 )
 
 

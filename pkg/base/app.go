@@ -7,4 +7,3 @@ type (
 		Name() string
 	}
 )
-

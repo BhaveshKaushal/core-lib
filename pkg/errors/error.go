@@ -16,15 +16,16 @@ type Err struct {
 	code    int
 	message string
 	er      error
+	app     string
 }
 
 //TODO: Need to integrate logger
-func NewErr(code int, msg string, err error) *Err {
-	return &Err{code: code, message: msg, er: err}
+func NewErr(code int, err error, msg, app string) *Err {
+	return &Err{code: code, message: msg, er: err, app: app}
 }
 
-func NewErrDefault(code int, msg string) *Err {
-	return NewErr(code,msg,errors.New(msg))
+func NewErrDefault(code int, msg, app string) *Err {
+	return NewErr(code,errors.New(msg), msg, app)
 }
 
 
