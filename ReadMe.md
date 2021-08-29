@@ -7,4 +7,5 @@ Base Library for all the golang related projects.
  
 | pkg               | Error code Range          |
 | ----------------- |:-------------------------:|
+| errors            | 900  - 1000               |
 | Conf              | 1001 - 1100               |
