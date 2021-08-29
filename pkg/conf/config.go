@@ -1,10 +1,17 @@
 package conf
 
 import (
+	"io"
+
 	"github.com/BhaveshKaushal/base-lib/pkg/base"
 	errors "github.com/BhaveshKaushal/base-lib/pkg/errors"
 )
 
+type (
+	Config struct {
+		reader io.Reader
+	}
+)
 
 func Initialize(app base.App) *errors.Err {
 	if app.Name() == "" {
@@ -12,4 +19,8 @@ func Initialize(app base.App) *errors.Err {
 	}
 
 	return nil
+}
+
+func InitializeWithConfig(name string, config *Config) {
+	//TODO Use different config readers to load application specific configurations
 }
