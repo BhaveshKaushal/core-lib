@@ -48,3 +48,7 @@ func (err *Err) Cause() error {
 func (er *Err) Wrap(msg string) error {
 	return errors.Wrap(er.er, msg)
 }
+
+func (er *Err) Error() string {
+	return er.er.Error()
+}

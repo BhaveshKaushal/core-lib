@@ -7,6 +7,9 @@ import (
 	errors "github.com/BhaveshKaushal/base-lib/pkg/errors"
 )
 
+var (
+	BASE_FILE_PRIORITY = 500
+)
 type (
 	Config struct {
 		reader io.Reader
