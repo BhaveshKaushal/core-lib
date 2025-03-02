@@ -18,7 +18,3 @@ A structured logging framework built on top of logrus. For detailed documentatio
 ## Contributing
 
 Feel free to submit issues and enhancement requests.
-
-## License
-
-[Your License Here]
