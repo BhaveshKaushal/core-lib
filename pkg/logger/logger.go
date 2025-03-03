@@ -2,16 +2,15 @@ package logger
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	log = logrus.New()
+	log           = logrus.New()
 	defaultFields = logrus.Fields{
-		"app_name": "unknown",    // Default application name
+		"app_name":    "unknown", // Default application name
 		"app_version": "unknown", // Default version
 		"environment": "unknown", // Default environment
 	}
@@ -38,7 +37,6 @@ func Initialize(config LoggerConfig) {
 	// Set default configuration
 	log.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: "2006-01-02T15:04:05.000Z07:00",
-		FullTimestamp:   true,
 	})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logrus.InfoLevel)
@@ -103,18 +101,18 @@ func Error(msg string, err error, code Code, fields Fields) {
 	if fields == nil {
 		fields = Fields{}
 	}
-	
+
 	// Validate error code
 	if !IsValidCode(code) {
 		code = CodeUnknown
 	}
-	
+
 	fields["code"] = code
 	fields["code_description"] = GetCodeDescription(code)
 	if err != nil {
 		fields["error"] = err.Error()
 	}
-	
+
 	log.WithFields(logrus.Fields(fields)).Error(msg)
 }
 
@@ -123,18 +121,18 @@ func Fatal(msg string, err error, code Code, fields Fields) {
 	if fields == nil {
 		fields = Fields{}
 	}
-	
+
 	// Validate error code
 	if !IsValidCode(code) {
 		code = CodeUnknown
 	}
-	
+
 	fields["code"] = code
 	fields["code_description"] = GetCodeDescription(code)
 	if err != nil {
 		fields["error"] = err.Error()
 	}
-	
+
 	log.WithFields(logrus.Fields(fields)).Fatal(msg)
 }
 
