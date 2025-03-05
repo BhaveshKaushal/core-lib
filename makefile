@@ -9,7 +9,7 @@ export APP ?= base-lib
 # APP VARIABLES 
 #-------------------------------------------------------------------------------------------
 .DEFAULT_GOAL = help
-CONFIG_PATH ?= ../bk-config
+CONFIG_PATH ?= ../core-config
 
 #-------------------------------------------------------------------------------------------
 # USE COMMON FILE TARGETS
