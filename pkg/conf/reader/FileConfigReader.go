@@ -56,7 +56,6 @@ func (fcr FileConfigReader) GetPriority() int {
 	return fcr.priority
 }
 
-/*func (fcr *FileConfigReader) ReadConfig() (map[string]interface{}, errors.Err) {
-	configMap := make(map[string]interface{})
-
-}*/
+func (fcr *FileConfigReader) ReadConfig() (map[string]interface{}, error) {
+	return nil, nil
+}
