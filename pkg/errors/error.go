@@ -19,6 +19,14 @@ type Err struct {
 	app     string
 }
 
+type Err1 struct {
+	code    int
+	messageCode string
+	er      error
+	app     string
+}
+
+
 //TODO: Need to integrate logger
 func NewErr(code int, err error, msg, app string) *Err {
 	return &Err{code: code, message: msg, er: err, app: app}
