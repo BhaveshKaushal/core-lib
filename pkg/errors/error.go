@@ -6,30 +6,30 @@ import (
 
 type Error interface {
 	error
-	Code() int
+	Code() Code
 	Cause() error
 	Message() string
 	Er() error
 	Wrap(string) error
 }
 type Err struct {
-	code    int
+	code    Code
 	message string
 	er      error
 	app     string
 }
 
 //TODO: Need to integrate logger
-func NewErr(code int, err error, msg, app string) *Err {
+func NewErr(code Code, err error, msg, app string) *Err {
 	return &Err{code: code, message: msg, er: err, app: app}
 }
 
-func NewErrDefault(code int, msg, app string) *Err {
+func NewErrDefault(code Code, msg, app string) *Err {
 	return NewErr(code,errors.New(msg), msg, app)
 }
 
 
-func (err *Err) Code() int {
+func (err *Err) Code() Code {
 	return err.code
 }
 
@@ -50,5 +50,8 @@ func (er *Err) Wrap(msg string) error {
 }
 
 func (er *Err) Error() string {
+	if er.er == nil {
+		return ""
+	}
 	return er.er.Error()
 }

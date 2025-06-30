@@ -1,1 +1,11 @@
+# Coverage files
+coverage.out
+**/coverage.out
+*.coverage.out
+
+# Other coverage related files
+coverage.html
+**/coverage.html
+*.coverage.html
+
 pkg/conf/coverage.out

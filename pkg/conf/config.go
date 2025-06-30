@@ -18,7 +18,7 @@ type (
 
 func Initialize(app base.App) *errors.Err {
 	if app.Name() == "" {
-		return errors.MissingAppName
+		return errors.NewErrDefault(errors.ErrCodeConfigMissing, "Missing app name", "conf")
 	}
 
 	return nil

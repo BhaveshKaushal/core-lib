@@ -18,21 +18,27 @@ func TestInitialize(t *testing.T) {
 	}{
 		{
 			name:           "Success Initialize",
-			expectedOutput: (*errors.Err)(nil),
+			expectedOutput: nil,
 			app:            mocks.NewMock("testApp"),
 		},
 		{
 			name:           "Missing app name",
-			expectedOutput: errors.MissingAppName,
+			expectedOutput: errors.NewErrDefault(errors.ErrCodeConfigMissing, "Missing app name", "conf"),
 			app:            mocks.NewMock(""),
 		},
 	}
 
 	for _, test := range tests {
-
 		t.Run(test.name, func(t *testing.T) {
 			err := Initialize(test.app)
-			assert.Equal(t, test.expectedOutput, err)
+			
+			if test.expectedOutput == nil {
+				assert.Nil(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Equal(t, test.expectedOutput.Code(), err.Code())
+				assert.Equal(t, test.expectedOutput.Message(), err.Message())
+			}
 		})
 	}
 }

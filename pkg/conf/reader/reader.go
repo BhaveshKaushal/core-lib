@@ -1,6 +1,9 @@
 package reader
 
-import "github.com/BhaveshKaushal/base-lib/pkg/logger"
+import (
+	"github.com/BhaveshKaushal/base-lib/pkg/errors"
+	"github.com/BhaveshKaushal/base-lib/pkg/logger"
+)
 
 type (
 	ConfigReader interface {
@@ -48,7 +51,7 @@ func (ac *appConfig) AddReader(readers ...ConfigReader) {
 	for _, reader := range readers {
 		config,err := reader.ReadConfig()
 		if err != nil {
-				logger.Fatal("Error reading config", err, logger.ErrCodeConfig, nil)
+				logger.Fatal("Error reading config", err, errors.ErrCodeConfig, nil)
 		}
 		ac.configs[reader.GetPriority()] = config
 	}

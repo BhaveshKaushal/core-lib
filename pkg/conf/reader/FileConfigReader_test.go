@@ -10,10 +10,10 @@ import (
 
 var (
 	TEST_PRIORITY = 10
-	tempFCR,err       = NewFileConfigReader([]string{os.Getenv("HOME")}, false, "base.yaml", "yaml", TEST_PRIORITY)
+	tempFCR,_       = NewFileConfigReader([]string{os.Getenv("HOME")}, false, "base.yaml", "yaml", TEST_PRIORITY)
 )
 
-func TestValidateAndAbsolutePaths(t *testing.T){
+func TestAddAbsolutePaths(t *testing.T){
 	tests := []struct {
 		name   string
 		input  FileConfigReader
@@ -30,7 +30,7 @@ func TestValidateAndAbsolutePaths(t *testing.T){
 	for _, test := range tests {
 
 		t.Run(test.name, func(t *testing.T) {
-			err := test.input.validateAndAbsolutePaths()
+			err := test.input.addAbsoultePaths()
 			assert.Equal(t, test.output, err)
 		})
 	}
