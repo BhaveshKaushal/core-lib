@@ -6,13 +6,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInitialize(t *testing.T) {
+func TestInit(t *testing.T) {
 
 	tests := []struct {
 		name string
+		readers []ConfigReader
 	}{
 		{
 			name: "Success Initialize",
+		},
+		{
+			name: "Success Initialize with readers",
+			readers: []ConfigReader{
+				&FileConfigReader{
+					
+				},
+			},
 		},
 	}
 
@@ -20,11 +29,14 @@ func TestInitialize(t *testing.T) {
 
 		t.Run(test.name, func(t *testing.T) {
 
-			Initialize()
-			assert.NotNil(t, appConfig)
-			assert.NotNil(t, appConfig.appConfiguration)
-			assert.NotNil(t, appConfig.configs)
-
+			err := Init(test.readers...)
+			assert.Nil(t, err)
+			assert.NotNil(t, appConfigurtion)
+			assert.NotNil(t, appConfigurtion.configs)
+			assert.NotNil(t, appConfigurtion.finalizedAppConfig)
 		})
 	}
 }
+
+
+

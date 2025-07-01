@@ -1,39 +1,58 @@
 package reader
 
 import (
-	errors "github.com/BhaveshKaushal/base-lib/pkg/errors"
+	"github.com/BhaveshKaushal/base-lib/pkg/errors"
+	"github.com/BhaveshKaushal/base-lib/pkg/logger"
 )
 
 type (
 	ConfigReader interface {
 		priority
-		ReadConfig() errors.Error
+		ReadConfig() (map[string]interface{}, error)
 	}
 	priority interface {
 		GetPriority() int
 	}
 
-	appConfigDetails struct {
+	appConfig struct {
 		//sorted order of config
-		configOrder []int
+		//configPriority []int
 
 		//Configurations available for the app
 		configs map[int]map[string]interface{}
 
 		//Final configuration after merging all the available configs based on priority
-		appConfiguration map[string]interface{}
+		finalizedAppConfig map[string]interface{}
 	}
 )
 
-var appConfig *appConfigDetails
+var (
+	appConfigurtion *appConfig
+)
 
-func Initialize(){
-	appConfig = &appConfigDetails{
-		configs:          make(map[int]map[string]interface{}),
-		appConfiguration: make(map[string]interface{}),
-	}
+func Init(readers ...ConfigReader) error {
+	var err error
+	appConfigurtion, err = newAppConfig(readers...)
+	return err
 }
 
-/*func (acd *appConfigDetails) AddReader(){
-	
-}*/
+func newAppConfig(readers ...ConfigReader) (*appConfig, error) {
+	appConfig := &appConfig{
+		configs:            make(map[int]map[string]interface{}),
+		finalizedAppConfig: make(map[string]interface{}),
+	}
+
+	appConfig.AddReader(readers...)
+
+	return appConfig, nil
+}
+
+func (ac *appConfig) AddReader(readers ...ConfigReader) {
+	for _, reader := range readers {
+		config,err := reader.ReadConfig()
+		if err != nil {
+				logger.Fatal("Error reading config", err, errors.ErrCodeConfig, nil)
+		}
+		ac.configs[reader.GetPriority()] = config
+	}
+}
