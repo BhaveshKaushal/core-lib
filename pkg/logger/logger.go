@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/BhaveshKaushal/base-lib/pkg/errors"
@@ -18,7 +19,7 @@ var (
 	defaultFields = map[string]interface{}{
 		"app_name":    "unknown", // Application name identifier
 		"app_version": "unknown", // Application version for tracking deployments
-		"environment": "unknown", // Environment (dev, staging, prod) for filtering logs
+		"environment": "local",   // Environment (dev, staging, prod) for filtering logs
 	}
 )
 
@@ -28,6 +29,17 @@ type LoggerConfig struct {
 	AppName     string // Name of the application
 	AppVersion  string // Version of the application (e.g., "1.0.0")
 	Environment string // Environment where the app is running (e.g., "production")
+}
+
+// createZapConfig creates a standardized zap configuration with common settings
+func createZapConfig(level zapcore.Level) zap.Config {
+	zapConfig := zap.NewProductionConfig()
+	zapConfig.OutputPaths = []string{"stdout"}                      // Log to standard output
+	zapConfig.ErrorOutputPaths = []string{"stderr"}                 // Error logs to standard error
+	zapConfig.EncoderConfig.TimeKey = "timestamp"                   // Use "timestamp" as the time field key
+	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder // ISO8601 time format
+	zapConfig.Level = zap.NewAtomicLevelAt(level)                   // Set the specified level
+	return zapConfig
 }
 
 // Initialize sets up the zap logger with application-specific configuration
@@ -44,13 +56,7 @@ func Initialize(config LoggerConfig) {
 	}
 
 	// Create production-ready zap configuration
-	// Production config uses JSON encoding and appropriate log levels
-	zapConfig := zap.NewProductionConfig()
-	zapConfig.OutputPaths = []string{"stdout"}                      // Log to standard output
-	zapConfig.ErrorOutputPaths = []string{"stderr"}                 // Error logs to standard error
-	zapConfig.EncoderConfig.TimeKey = "timestamp"                   // Use "timestamp" as the time field key
-	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder // ISO8601 time format
-	zapConfig.Level = zap.NewAtomicLevelAt(zap.InfoLevel)           // Default to Info level
+	zapConfig := createZapConfig(zap.InfoLevel) // Default to Info level
 
 	// Build the logger instance
 	var err error
@@ -105,6 +111,7 @@ func fieldsToZapFields(fields Fields) []zap.Field {
 // Valid levels: debug, info, warn/warning, error, fatal
 func SetLogLevel(level string) {
 	if zapLogger == nil {
+		fmt.Println("Logger is not initialized")
 		return // Gracefully handle uninitialized logger
 	}
 
@@ -125,14 +132,19 @@ func SetLogLevel(level string) {
 		zapLevel = zap.InfoLevel // Default to info for invalid levels
 	}
 
-	// Create new logger with updated level
-	// Note: This recreates the logger - consider using zap.AtomicLevel for frequent changes
-	zapConfig := zap.NewProductionConfig()
-	zapConfig.Level = zap.NewAtomicLevelAt(zapLevel)
+	// Create new logger with updated level using common configuration
+	zapConfig := createZapConfig(zapLevel)
 	newLogger, err := zapConfig.Build()
 	if err != nil {
 		return // Keep existing logger if new one fails to build
 	}
+
+	// Add default fields to the new logger to preserve them
+	fields := make([]zap.Field, 0, len(defaultFields))
+	for k, v := range defaultFields {
+		fields = append(fields, zap.Any(k, v))
+	}
+	newLogger = newLogger.With(fields...)
 
 	// Replace current logger after ensuring old one is synced
 	zapLogger.Sync()
@@ -148,6 +160,7 @@ type Fields map[string]interface{}
 // Only logged when log level is set to debug
 func Debug(msg string, fields Fields) {
 	if zapLogger == nil {
+		fmt.Println("Logger is not initialized")
 		return // Gracefully handle uninitialized logger
 	}
 	fields = addDefaultFields(fields)
@@ -247,6 +260,7 @@ func WithContext(ctx context.Context) *zap.Logger {
 // Supports "json" (structured, machine-readable) and "text"/"console" (human-readable)
 func SetFormatter(format string) {
 	if zapLogger == nil {
+		fmt.Println("Logger is not initialized")
 		return // Gracefully handle uninitialized logger
 	}
 
@@ -260,13 +274,14 @@ func SetFormatter(format string) {
 		// Development config uses console encoding - better for human reading
 		zapConfig = zap.NewDevelopmentConfig()
 	default:
-		// Default to JSON for unknown formats
+		// Default to JSON for unknown`` formats
 		zapConfig = zap.NewProductionConfig()
 	}
 
 	// Build new logger with updated format
 	newLogger, err := zapConfig.Build()
 	if err != nil {
+		zapLogger.Error("Failed to build new logger", zap.Error(err))
 		return // Keep existing logger if new one fails to build
 	}
 
