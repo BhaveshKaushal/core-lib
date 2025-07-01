@@ -1,6 +1,6 @@
 # Logger Package
 
-A structured logging framework built on top of [zap](https://github.com/uber-go/zap) providing high-performance, structured logging capabilities with support for multiple log levels, structured logging, and error code integration.
+A structured logging framework built on top of [zap](https://github.com/uber-go/zap) providing high-performance, structured logging capabilities with support for multiple log levels, structured logging, and integrated error handling.
 
 ## Features
 
@@ -8,7 +8,7 @@ A structured logging framework built on top of [zap](https://github.com/uber-go/
 - Multiple log levels (Debug, Info, Warn, Error, Fatal)
 - Structured logging with fields support
 - JSON and Text formatting options
-- Automatic error code integration
+- **Integrated error handling** with custom error types
 - Runtime log level and format configuration
 - Application metadata injection
 - Graceful handling of uninitialized logger
@@ -56,10 +56,10 @@ logger.Info("User action", logger.Fields{
     "timestamp": time.Now(),
 })
 
-// Error logging with error code
-err := someFunction()
+// Error logging with custom error
+err := errors.NewErr(errors.ErrCodeDatabase, someError, "Database operation failed", "myapp")
 if err != nil {
-    logger.Error("Operation failed", err, errors.ErrCodeUnknown, logger.Fields{
+    logger.Error("Operation failed", err, logger.Fields{
         "operation": "someFunction",
         "details": "additional context",
     })
@@ -73,8 +73,8 @@ The framework supports multiple log levels:
 - **Debug**: Detailed debugging information
 - **Info**: General operational information  
 - **Warn**: Warning messages for potentially harmful situations
-- **Error**: Error messages for serious problems (requires error object and code)
-- **Fatal**: Critical errors that result in program termination (requires error object and code)
+- **Error**: Error messages for serious problems (requires custom error object)
+- **Fatal**: Critical errors that result in program termination (requires custom error object)
 
 ```go
 // Setting log level at runtime
@@ -92,14 +92,15 @@ logger.Info("Database operation", logger.Fields{
 })
 ```
 
-### Error Handling with Error Codes
+### Error Handling with Custom Errors
 
-The logger integrates with the error code system for standardized error tracking:
+The logger integrates with the custom error system for standardized error tracking:
 
 ```go
 err := db.Query("SELECT * FROM users")
 if err != nil {
-    logger.Error("Database query failed", err, errors.ErrCodeDatabase, logger.Fields{
+    customErr := errors.NewErr(errors.ErrCodeDatabase, err, "Database query failed", "UserService")
+    logger.Error("Database query failed", customErr, logger.Fields{
         "query": "SELECT * FROM users",
         "component": "UserService",
     })
@@ -145,7 +146,8 @@ func handleUserRegistration(w http.ResponseWriter, r *http.Request) {
 
     user, err := processRegistration(r)
     if err != nil {
-        logger.Error("Registration failed", err, errors.ErrCodeValidation, logger.Fields{
+        customErr := errors.NewErr(errors.ErrCodeValidation, err, "Registration validation failed", "AuthService")
+        logger.Error("Registration failed", customErr, logger.Fields{
             "email": user.Email,
             "duration": time.Since(start).String(),
         })
@@ -172,8 +174,9 @@ func (repo *UserRepository) CreateUser(ctx context.Context, user *User) error {
 
     tx, err := repo.db.BeginTx(ctx, nil)
     if err != nil {
-        logger.Error("Failed to begin transaction", err, errors.ErrCodeDatabase, nil)
-        return err
+        customErr := errors.NewErr(errors.ErrCodeDatabase, err, "Failed to begin transaction", "UserRepo")
+        logger.Error("Failed to begin transaction", customErr, nil)
+        return customErr
     }
 
     result, err := tx.ExecContext(ctx, 
@@ -181,11 +184,12 @@ func (repo *UserRepository) CreateUser(ctx context.Context, user *User) error {
         user.Email, user.Name, user.Role,
     )
     if err != nil {
-        logger.Error("Failed to insert user", err, errors.ErrCodeDatabase, logger.Fields{
+        customErr := errors.NewErr(errors.ErrCodeDatabase, err, "Failed to insert user", "UserRepo")
+        logger.Error("Failed to insert user", customErr, logger.Fields{
             "email": user.Email,
         })
         tx.Rollback()
-        return err
+        return customErr
     }
 
     id, err := result.LastInsertId()
@@ -198,10 +202,11 @@ func (repo *UserRepository) CreateUser(ctx context.Context, user *User) error {
     }
 
     if err := tx.Commit(); err != nil {
-        logger.Error("Failed to commit transaction", err, errors.ErrCodeDatabase, logger.Fields{
+        customErr := errors.NewErr(errors.ErrCodeDatabase, err, "Failed to commit transaction", "UserRepo")
+        logger.Error("Failed to commit transaction", customErr, logger.Fields{
             "userId": user.ID,
         })
-        return err
+        return customErr
     }
 
     logger.Info("User created successfully", logger.Fields{
@@ -233,7 +238,8 @@ func processBackgroundJob(ctx context.Context, job Job) {
 
         err := stage.Execute(ctx)
         if err != nil {
-            logger.Error("Job stage failed", err, errors.ErrCodeProcessing, logger.Fields{
+            customErr := errors.NewErr(errors.ErrCodeProcessing, err, "Job stage execution failed", "JobProcessor")
+            logger.Error("Job stage failed", customErr, logger.Fields{
                 "jobId": job.ID,
                 "stage": stage.Name,
                 "duration": time.Since(stageStart).String(),
@@ -241,7 +247,8 @@ func processBackgroundJob(ctx context.Context, job Job) {
             })
             
             if stage.Attempts >= 3 {
-                logger.Fatal("Job failed after max retries", err, errors.ErrCodeProcessing, logger.Fields{
+                fatalErr := errors.NewErr(errors.ErrCodeProcessing, err, "Job failed after max retries", "JobProcessor")
+                logger.Fatal("Job failed after max retries", fatalErr, logger.Fields{
                     "jobId": job.ID,
                     "stage": stage.Name,
                     "totalAttempts": stage.Attempts,
@@ -340,12 +347,12 @@ zapLogger := logger.WithContext(ctx)
    - Debug: For detailed debugging information
    - Info: For general operational information
    - Warn: For potentially harmful situations
-   - Error: For serious problems (always include error object and code)
+   - Error: For serious problems (always use custom error objects)
    - Fatal: For critical errors requiring immediate attention
 
 2. **Always include relevant context** in structured fields
 
-3. **Use error logging with proper error objects and codes** for standardized error tracking
+3. **Use custom error objects** for error and fatal logging to get standardized error tracking
 
 4. **Include relevant metadata** in your logs (timestamps, request IDs, user IDs, etc.)
 
@@ -355,21 +362,24 @@ zapLogger := logger.WithContext(ctx)
 
 7. **Use text format in development** for better human readability
 
-## Error Code Integration
+## Error Integration
 
-The logger automatically includes error codes and descriptions in error and fatal log entries:
+The logger automatically extracts and includes comprehensive error information from custom error objects:
 
 ```go
-logger.Error("Database connection failed", err, errors.ErrCodeDatabase, logger.Fields{
+customErr := errors.NewErr(errors.ErrCodeDatabase, dbErr, "Database connection failed", "MyApp")
+logger.Error("Database connection failed", customErr, logger.Fields{
     "host": "localhost",
     "port": 5432,
 })
 ```
 
 This produces structured output with:
-- `code`: The error code
+- `code`: The error code (e.g., "1200" for database errors)
 - `code_description`: Human-readable description of the error code
-- `error`: The actual error message
+- `error_message`: The custom error message
+- `error_cause`: The underlying cause error message
+- `app`: The application identifier
 - All your custom fields
 
 ## Performance
@@ -386,6 +396,6 @@ If migrating from other logging libraries:
 
 1. Replace log level calls with appropriate logger functions
 2. Convert log fields to `logger.Fields` type
-3. Add error codes for error and fatal logging
+3. **Create custom error objects** for error and fatal logging using `errors.NewErr()`
 4. Initialize with your application configuration
 5. Use structured fields instead of string concatenation 

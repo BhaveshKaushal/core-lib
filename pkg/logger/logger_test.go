@@ -30,7 +30,39 @@ func getZapLevel(level string) zapcore.Level {
 	}
 }
 
-// Update the Error test to use the errors package
+// TestErrorWithCustomError tests the Error function with custom error objects
+func TestErrorWithCustomError(t *testing.T) {
+	// Create a test logger that captures output
+	var buf bytes.Buffer
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.AddSync(&buf),
+		zapcore.DebugLevel,
+	)
+	testLogger := zap.New(core)
+
+	// Save original logger
+	originalLogger := zapLogger
+	defer func() {
+		zapLogger = originalLogger
+	}()
+
+	// Set test logger
+	zapLogger = testLogger
+
+	// Test with valid custom error
+	testErr := errorcodes.NewErr(errorcodes.ErrCodeDatabase, fmt.Errorf("test error"), "Test error message", "testapp")
+	Error("test message", testErr, nil)
+
+	output := buf.String()
+
+	// Should include error code and description
+	assert.Contains(t, output, string(errorcodes.ErrCodeDatabase))
+	assert.Contains(t, output, "Test error message")
+	assert.Contains(t, output, "test error")
+}
+
+// TestErrorWithInvalidCode tests that invalid error codes are handled gracefully
 func TestErrorWithInvalidCode(t *testing.T) {
 	// Create a test logger that captures output
 	var buf bytes.Buffer
@@ -50,12 +82,13 @@ func TestErrorWithInvalidCode(t *testing.T) {
 	// Set test logger
 	zapLogger = testLogger
 
-	// Test with invalid code
-	Error("test message", nil, errorcodes.Code("invalid"), nil)
+	// Create custom error with invalid code
+	testErr := errorcodes.NewErr(errorcodes.Code("invalid"), fmt.Errorf("test error"), "Test error message", "testapp")
+	Error("test message", testErr, nil)
 
 	output := buf.String()
 
-	// Should use CodeUnknown for invalid codes
+	// Should use ErrCodeUnknown for invalid codes
 	assert.Contains(t, output, string(errorcodes.ErrCodeUnknown))
 }
 
@@ -344,7 +377,8 @@ func TestLogLevelFiltering(t *testing.T) {
 			testBuf.Reset()
 
 			// Test error logging
-			Error("error message", nil, errorcodes.ErrCodeUnknown, Fields{"test": "error"})
+			testErr := errorcodes.NewErr(errorcodes.ErrCodeUnknown, fmt.Errorf("test error"), "Test error message", "testapp")
+			Error("error message", testErr, Fields{"test": "error"})
 			if tt.shouldLogError {
 				assert.Contains(t, testBuf.String(), "error message")
 			} else {
@@ -437,8 +471,6 @@ func TestSetFormatter(t *testing.T) {
 		})
 	}
 }
-
-
 
 // TestSetFormatterActualOutput tests the actual output format by creating custom loggers
 func TestSetFormatterActualOutput(t *testing.T) {
