@@ -49,9 +49,10 @@ func newAppConfig(readers ...ConfigReader) (*appConfig, error) {
 
 func (ac *appConfig) AddReader(readers ...ConfigReader) {
 	for _, reader := range readers {
-		config,err := reader.ReadConfig()
+		config, err := reader.ReadConfig()
 		if err != nil {
-				logger.Fatal("Error reading config", err, errors.ErrCodeConfig, nil)
+			customErr := errors.NewErr(errors.ErrCodeConfig, err, "Error reading config", "ConfigReader")
+			logger.Fatal("Error reading config", customErr, nil)
 		}
 		ac.configs[reader.GetPriority()] = config
 	}

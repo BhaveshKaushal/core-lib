@@ -92,10 +92,14 @@ func fieldsToZapFields(fields Fields) []zap.Field {
 }
 
 // prepareErrorFields prepares fields for error logging with standardized error information
-func prepareErrorFields(err error, code errors.Code, fields Fields) Fields {
+// Uses the custom Error interface from the errors package
+func prepareErrorFields(err errors.Error, fields Fields) Fields {
 	if fields == nil {
 		fields = Fields{}
 	}
+
+	// Get error code from the custom error
+	code := err.Code()
 
 	// Validate and set error code - use unknown if invalid
 	if !errors.IsValidCode(code) {
@@ -105,9 +109,9 @@ func prepareErrorFields(err error, code errors.Code, fields Fields) Fields {
 	// Add standardized error information to fields
 	fields["code"] = code
 	fields["code_description"] = errors.GetCodeDescription(code)
-	if err != nil {
-		fields["error"] = err.Error()
-	}
+	fields["error_message"] = err.Message()
+	fields["error_cause"] = err.Cause().Error()
+	fields["app"] = err.Er().Error() // The underlying error message
 
 	return addDefaultFields(fields)
 }
@@ -207,27 +211,27 @@ func Warn(msg string, fields Fields) {
 	zapLogger.Warn(msg, fieldsToZapFields(fields)...)
 }
 
-// Error logs a message at error level with error code and structured fields
+// Error logs a message at error level with custom error and structured fields
 // Error logs indicate serious problems that need attention
-// Automatically includes error code and description for standardized error tracking
-func Error(msg string, err error, code errors.Code, fields Fields) {
+// Automatically includes error code, description, and message from the custom error
+func Error(msg string, err errors.Error, fields Fields) {
 	if !checkLoggerInitialized() {
 		return
 	}
 
-	fields = prepareErrorFields(err, code, fields)
+	fields = prepareErrorFields(err, fields)
 	zapLogger.Error(msg, fieldsToZapFields(fields)...)
 }
 
-// Fatal logs a message at fatal level with error code and then exits the application
+// Fatal logs a message at fatal level with custom error and then exits the application
 // Use sparingly - only for unrecoverable errors that require application termination
-// Automatically includes error code and description for standardized error tracking
-func Fatal(msg string, err error, code errors.Code, fields Fields) {
+// Automatically includes error code, description, and message from the custom error
+func Fatal(msg string, err errors.Error, fields Fields) {
 	if !checkLoggerInitialized() {
 		return
 	}
 
-	fields = prepareErrorFields(err, code, fields)
+	fields = prepareErrorFields(err, fields)
 	// Fatal will log the message and then call os.Exit(1)
 	zapLogger.Fatal(msg, fieldsToZapFields(fields)...)
 }
