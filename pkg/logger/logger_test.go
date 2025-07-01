@@ -354,6 +354,92 @@ func TestLogLevelFiltering(t *testing.T) {
 	}
 }
 
+// TestSetFormatter tests the SetFormatter function with various format inputs
+// Note: This test cannot validate the actual output format because SetFormatter creates
+// a new logger that doesn't use our test buffer. For actual format validation,
+// see TestSetFormatterActualOutput.
+func TestSetFormatter(t *testing.T) {
+	// Save original logger
+	originalLogger := zapLogger
+	defer func() {
+		zapLogger = originalLogger
+	}()
+
+	// Initialize logger first to ensure we have a working logger
+	Initialize(LoggerConfig{
+		AppName:     "test-app",
+		AppVersion:  "1.0.0",
+		Environment: "test",
+	})
+
+	tests := []struct {
+		name           string
+		format         string
+		shouldNotPanic bool
+	}{
+		{
+			name:           "json format",
+			format:         "json",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "JSON format (uppercase)",
+			format:         "JSON",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "text format",
+			format:         "text",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "console format",
+			format:         "console",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "CONSOLE format (uppercase)",
+			format:         "CONSOLE",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "unknown format defaults to json",
+			format:         "unknown",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "empty string defaults to json",
+			format:         "",
+			shouldNotPanic: true,
+		},
+		{
+			name:           "mixed case text",
+			format:         "Text",
+			shouldNotPanic: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set formatter
+			assert.NotPanics(t, func() {
+				SetFormatter(tt.format)
+			})
+
+			// Verify the logger is not nil and has a core
+			assert.NotNil(t, zapLogger)
+			assert.NotNil(t, zapLogger.Core())
+
+			// Test that the logger can be used without panicking
+			assert.NotPanics(t, func() {
+				Info("test message", Fields{"test": "formatter"})
+			})
+		})
+	}
+}
+
+
+
 // TestSetFormatterActualOutput tests the actual output format by creating custom loggers
 func TestSetFormatterActualOutput(t *testing.T) {
 	// Save original logger
