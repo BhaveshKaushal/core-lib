@@ -1,22 +1,42 @@
 # Logger Package
 
-A structured logging framework built on top of [logrus](https://github.com/sirupsen/logrus) providing easy-to-use logging capabilities with support for multiple log levels, structured logging, and context awareness.
+A structured logging framework built on top of [zap](https://github.com/uber-go/zap) providing high-performance, structured logging capabilities with support for multiple log levels, structured logging, and error code integration.
 
 ## Features
 
+- **High-performance logging** using Uber's zap library
 - Multiple log levels (Debug, Info, Warn, Error, Fatal)
 - Structured logging with fields support
 - JSON and Text formatting options
-- Context-aware logging
-- Configurable log levels
-- Error handling integration
+- Automatic error code integration
+- Runtime log level and format configuration
+- Application metadata injection
+- Graceful handling of uninitialized logger
 
 ## Installation
 
-First, ensure you have Go installed and your Go workspace set up. Then install the required dependency:
+First, ensure you have Go installed and your Go workspace set up. The logger package uses zap as its underlying logging library:
 
 ```bash
-go get github.com/sirupsen/logrus
+go get go.uber.org/zap
+```
+
+## Quick Start
+
+The logger is automatically initialized when the package is imported, so you can start using it immediately:
+
+```go
+import "github.com/BhaveshKaushal/base-lib/pkg/logger"
+
+// Simple info logging
+logger.Info("Server started", nil)
+
+// Info with structured fields
+logger.Info("User action", logger.Fields{
+    "userId": "123",
+    "action": "login",
+    "timestamp": time.Now(),
+})
 ```
 
 ## Usage
@@ -24,7 +44,7 @@ go get github.com/sirupsen/logrus
 ### Basic Logging
 
 ```go
-import "your-module/pkg/logger"
+import "github.com/BhaveshKaushal/base-lib/pkg/logger"
 
 // Simple info logging
 logger.Info("Server started", nil)
@@ -36,10 +56,10 @@ logger.Info("User action", logger.Fields{
     "timestamp": time.Now(),
 })
 
-// Error logging
+// Error logging with error code
 err := someFunction()
 if err != nil {
-    logger.Error("Operation failed", err, logger.Fields{
+    logger.Error("Operation failed", err, errors.ErrCodeUnknown, logger.Fields{
         "operation": "someFunction",
         "details": "additional context",
     })
@@ -50,15 +70,15 @@ if err != nil {
 
 The framework supports multiple log levels:
 
-- Debug: Detailed debugging information
-- Info: General operational information
-- Warn: Warning messages for potentially harmful situations
-- Error: Error messages for serious problems
-- Fatal: Critical errors that result in program termination
+- **Debug**: Detailed debugging information
+- **Info**: General operational information  
+- **Warn**: Warning messages for potentially harmful situations
+- **Error**: Error messages for serious problems (requires error object and code)
+- **Fatal**: Critical errors that result in program termination (requires error object and code)
 
 ```go
-// Setting log level
-logger.SetLogLevel("debug") // Options: "debug", "info", "warn", "error"
+// Setting log level at runtime
+logger.SetLogLevel("debug") // Options: "debug", "info", "warn"/"warning", "error", "fatal"
 ```
 
 ### Structured Logging with Fields
@@ -72,12 +92,14 @@ logger.Info("Database operation", logger.Fields{
 })
 ```
 
-### Error Handling
+### Error Handling with Error Codes
+
+The logger integrates with the error code system for standardized error tracking:
 
 ```go
 err := db.Query("SELECT * FROM users")
 if err != nil {
-    logger.Error("Database query failed", err, logger.Fields{
+    logger.Error("Database query failed", err, errors.ErrCodeDatabase, logger.Fields{
         "query": "SELECT * FROM users",
         "component": "UserService",
     })
@@ -89,7 +111,7 @@ if err != nil {
 ```go
 ctx := context.Background()
 logEntry := logger.WithContext(ctx)
-// Use logEntry for subsequent logging
+// Use logEntry for subsequent logging (returns underlying zap logger)
 ```
 
 ### Formatting Options
@@ -97,11 +119,13 @@ logEntry := logger.WithContext(ctx)
 The logger supports both JSON and text formatting:
 
 ```go
-// Set JSON formatting (default)
+// Set JSON formatting (default, production-ready)
 logger.SetFormatter("json")
 
-// Set text formatting
+// Set text formatting (human-readable, development-friendly)
 logger.SetFormatter("text")
+// or
+logger.SetFormatter("console")
 ```
 
 ## Real-World Examples
@@ -110,10 +134,8 @@ logger.SetFormatter("text")
 
 ```go
 func handleUserRegistration(w http.ResponseWriter, r *http.Request) {
-    // Start timing the request
     start := time.Now()
     
-    // Log incoming request
     logger.Info("Received registration request", logger.Fields{
         "method": r.Method,
         "path": r.URL.Path,
@@ -121,10 +143,9 @@ func handleUserRegistration(w http.ResponseWriter, r *http.Request) {
         "userAgent": r.UserAgent(),
     })
 
-    // Process registration...
     user, err := processRegistration(r)
     if err != nil {
-        logger.Error("Registration failed", err, logger.Fields{
+        logger.Error("Registration failed", err, errors.ErrCodeValidation, logger.Fields{
             "email": user.Email,
             "duration": time.Since(start).String(),
         })
@@ -132,7 +153,6 @@ func handleUserRegistration(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Log success
     logger.Info("User registered successfully", logger.Fields{
         "userId": user.ID,
         "email": user.Email,
@@ -152,34 +172,33 @@ func (repo *UserRepository) CreateUser(ctx context.Context, user *User) error {
 
     tx, err := repo.db.BeginTx(ctx, nil)
     if err != nil {
-        logger.Error("Failed to begin transaction", err, nil)
+        logger.Error("Failed to begin transaction", err, errors.ErrCodeDatabase, nil)
         return err
     }
 
-    // Insert user
     result, err := tx.ExecContext(ctx, 
         "INSERT INTO users (email, name, role) VALUES (?, ?, ?)",
         user.Email, user.Name, user.Role,
     )
     if err != nil {
-        logger.Error("Failed to insert user", err, logger.Fields{
+        logger.Error("Failed to insert user", err, errors.ErrCodeDatabase, logger.Fields{
             "email": user.Email,
-            "error_code": "DB_INSERT_ERROR",
         })
         tx.Rollback()
         return err
     }
 
-    // Get inserted ID
     id, err := result.LastInsertId()
     if err != nil {
-        logger.Warn("Could not get last insert ID", err, nil)
+        logger.Warn("Could not get last insert ID", logger.Fields{
+            "error": err.Error(),
+        })
     } else {
         user.ID = id
     }
 
     if err := tx.Commit(); err != nil {
-        logger.Error("Failed to commit transaction", err, logger.Fields{
+        logger.Error("Failed to commit transaction", err, errors.ErrCodeDatabase, logger.Fields{
             "userId": user.ID,
         })
         return err
@@ -203,11 +222,6 @@ func processBackgroundJob(ctx context.Context, job Job) {
         "priority": job.Priority,
     })
 
-    // Add trace ID to context
-    ctx = context.WithValue(ctx, "traceId", uuid.New().String())
-    logEntry := logger.WithContext(ctx)
-
-    // Process job stages
     for _, stage := range job.Stages {
         stageStart := time.Now()
         
@@ -219,7 +233,7 @@ func processBackgroundJob(ctx context.Context, job Job) {
 
         err := stage.Execute(ctx)
         if err != nil {
-            logger.Error("Job stage failed", err, logger.Fields{
+            logger.Error("Job stage failed", err, errors.ErrCodeProcessing, logger.Fields{
                 "jobId": job.ID,
                 "stage": stage.Name,
                 "duration": time.Since(stageStart).String(),
@@ -227,7 +241,7 @@ func processBackgroundJob(ctx context.Context, job Job) {
             })
             
             if stage.Attempts >= 3 {
-                logger.Fatal("Job failed after max retries", err, logger.Fields{
+                logger.Fatal("Job failed after max retries", err, errors.ErrCodeProcessing, logger.Fields{
                     "jobId": job.ID,
                     "stage": stage.Name,
                     "totalAttempts": stage.Attempts,
@@ -251,43 +265,127 @@ func processBackgroundJob(ctx context.Context, job Job) {
 }
 ```
 
-## Default Configuration
+## Configuration
 
-The logger is configured with these defaults:
-- JSON formatter
-- Output to stdout
-- Info level logging
+### Default Configuration
 
-## Best Practices
+The logger is automatically initialized with these defaults:
+- **JSON formatter** (production-ready)
+- **Info level** logging
+- **Stdout** output
+- **ISO8601 timestamp** format
+- **Default fields**: `app_name: "unknown"`, `app_version: "unknown"`, `environment: "unknown"`
 
-1. Use appropriate log levels:
-   - Debug: For detailed debugging information
-   - Info: For general operational information
-   - Warn: For potentially harmful situations
-   - Error: For serious problems
-   - Fatal: For critical errors requiring immediate attention
+### Custom Initialization
 
-2. Always include relevant context in structured fields
-
-3. Use error logging with proper error objects
-
-4. Include relevant metadata in your logs (timestamps, request IDs, etc.)
-
-## Initialization
-
-Before using the logger, initialize it with your application information:
+For production applications, initialize the logger with your application information:
 
 ```go
 logger.Initialize(logger.LoggerConfig{
-    AppName:     "your-app-name",
+    AppName:     "my-application",
     AppVersion:  "1.0.0",
     Environment: "production", // or "development", "staging", etc.
 })
 ```
 
 This will add default fields to all log entries:
-- app_name: Your application name
-- app_version: Your application version
-- environment: Your deployment environment
+- `app_name`: Your application name
+- `app_version`: Your application version  
+- `environment`: Your deployment environment
 
-These fields will be automatically included in all log entries for better tracking and filtering. 
+### Runtime Configuration
+
+You can change log levels and formats at runtime:
+
+```go
+// Change log level
+logger.SetLogLevel("debug")
+
+// Change format
+logger.SetFormatter("text")  // For development
+logger.SetFormatter("json")  // For production
+```
+
+## Advanced Usage
+
+### Accessing the Underlying Zap Logger
+
+For advanced zap-specific functionality:
+
+```go
+zapLogger := logger.GetLogger()
+// Use zap-specific features
+zapLogger.WithOptions(zap.AddCaller())
+```
+
+### Flushing Buffered Logs
+
+Ensure all logs are written before shutdown:
+
+```go
+defer logger.Sync()
+```
+
+### Context Integration
+
+```go
+ctx := context.WithValue(context.Background(), "requestId", "12345")
+zapLogger := logger.WithContext(ctx)
+// Future enhancement: extract values from context for logging
+```
+
+## Best Practices
+
+1. **Use appropriate log levels**:
+   - Debug: For detailed debugging information
+   - Info: For general operational information
+   - Warn: For potentially harmful situations
+   - Error: For serious problems (always include error object and code)
+   - Fatal: For critical errors requiring immediate attention
+
+2. **Always include relevant context** in structured fields
+
+3. **Use error logging with proper error objects and codes** for standardized error tracking
+
+4. **Include relevant metadata** in your logs (timestamps, request IDs, user IDs, etc.)
+
+5. **Initialize with proper configuration** in production applications
+
+6. **Use JSON format in production** for better log aggregation and parsing
+
+7. **Use text format in development** for better human readability
+
+## Error Code Integration
+
+The logger automatically includes error codes and descriptions in error and fatal log entries:
+
+```go
+logger.Error("Database connection failed", err, errors.ErrCodeDatabase, logger.Fields{
+    "host": "localhost",
+    "port": 5432,
+})
+```
+
+This produces structured output with:
+- `code`: The error code
+- `code_description`: Human-readable description of the error code
+- `error`: The actual error message
+- All your custom fields
+
+## Performance
+
+The logger is built on zap, which is designed for high-performance logging:
+- Zero-allocation JSON encoding
+- Structured logging with type safety
+- Efficient field handling
+- Minimal memory allocations
+
+## Migration from Other Loggers
+
+If migrating from other logging libraries:
+
+1. Replace log level calls with appropriate logger functions
+2. Convert log fields to `logger.Fields` type
+3. Add error codes for error and fatal logging
+4. Initialize with your application configuration
+5. Use structured fields instead of string concatenation 
